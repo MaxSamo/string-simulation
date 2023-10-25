@@ -5,8 +5,11 @@
 #include <string.h>         // Required for: memcpy()
 #include <vector>
 
-#define MAX_SAMPLES              512 //512
-#define MAX_SAMPLES_PER_UPDATE   4096 //4096
+#define MAX_SAMPLES              512
+#define MAX_SAMPLES_PER_UPDATE   4096
+#define SLOWDOWN_FACTOR          2 // string updates SLOWDOWN_FACTOR times more slowly
+
+int harmonic = 1;
 
 struct StringNode
 {
@@ -20,27 +23,24 @@ void updateString()
 {
     for(int samples = 0; samples < 6; samples++)
     {
-    for(int s = 1; s < string.size()-2; s++)
-    {
-        string[s].velocity += ((string[s-1].position+string[s+1].position)/2)-string[s].position;
-    }
-    for(int s = 1; s < string.size()-2; s++)
-    {
-        string[s].position += string[s].velocity;
-    }
-    string[0].position = 0;
-    string[string.size()-1].position = 0;
+        for(int s = 1; s < string.size()-2; s++)
+        {
+            string[s].velocity += ((string[s-1].position+string[s+1].position)/2)-string[s].position;
+        }
+        for(int s = 1; s < string.size()-2; s++)
+        {
+            string[s].position += string[s].velocity;
+        }
     }
 }
 
-int harmonic = 1;
 void AudioInputCallback(void *buffer, unsigned int frames)
 {
     short *d = (short *)buffer;
 
     for (int i = 0; i < frames; i++)
     {
-        if(i%2==0)
+        if(i%SLOWDOWN_FACTOR==0)
         {
             updateString();
         }
@@ -74,8 +74,6 @@ int main(void)
 
     SetAudioStreamCallback(stream, AudioInputCallback);
 
-    // Buffer for the single cycle waveform we are synthesizing
-
     // Frame buffer, describing the waveform when repeated over the course of a frame
     short *writeBuf = (short *)malloc(sizeof(short)*MAX_SAMPLES_PER_UPDATE);
 
@@ -107,8 +105,6 @@ int main(void)
         
         //----------------------------------------------------------------------------------
 
-        // Draw
-        //----------------------------------------------------------------------------------
         BeginDrawing();
             if(IsKeyPressed(KEY_UP))
             {
@@ -124,8 +120,7 @@ int main(void)
                     harmonic = 1;
                 }
             }
-            //ClearBackground({0,16,32,1});
-            DrawRectangle(0,0,screenWidth,screenHeight,{0,0,0,2});
+            DrawRectangle(0,0,screenWidth,screenHeight,{0,0,0,32});
             for(uint i = 0; i < string.size(); i++)
             {
                 //DrawRectangle(0,screenHeight/2+springs[i].position,screenWidth,32,{255,255,255,3});
